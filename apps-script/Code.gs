@@ -43,11 +43,12 @@ function splitList_(v) {
 function doGet() {
   var sh = sheet_();
   var rows = sh.getDataRange().getValues();
-  rows.shift(); // drop header
   var i = {};
   HEADERS.forEach(function (h, n) { i[h] = n; });
   var out = [];
-  rows.forEach(function (r) {
+  rows.forEach(function (r, idx) {
+    if (idx === 0) return; // header row
+    if (String(r[i.id]) === "id" || String(r[i.timestamp]) === "timestamp") return; // stray header
     if (String(r[i.status] || "").toLowerCase() === "hidden") return;
     if (!r[i.url] && !r[i.title]) return;
     out.push({
