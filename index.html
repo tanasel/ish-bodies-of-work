@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="A shared, self-sorting library of non-literary texts ('bodies of work') for the ISH English department — drop a link, it files itself by IB field of inquiry." />
+  <title>Bodies of Work · ISH English</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#results">Skip to resources</a>
+
+  <header class="masthead">
+    <div class="masthead__inner">
+      <div class="masthead__brand">
+        <p class="kicker">ISH · English Department</p>
+        <h1 class="wordmark">Bodies of Work</h1>
+        <p class="lede">
+          A shared library of the non-literary texts worth teaching — ad campaigns,
+          speeches, columns, photographs. Drop a link and it files itself by field of
+          inquiry. No slideshow to maintain, no folder to tidy.
+        </p>
+      </div>
+      <div class="masthead__actions">
+        <button class="btn btn--primary" id="addBtn" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="icon"><path d="M12 5v14M5 12h14" /></svg>
+          Add a resource
+        </button>
+        <p class="stat" id="stat" aria-live="polite">
+          <span id="countNum">0</span> resources across <span id="fieldNum">5</span> fields
+        </p>
+      </div>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="toolbar__inner">
+      <div class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="icon"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+        <input id="search" type="search" placeholder="Search titles, themes, notes…" aria-label="Search resources" autocomplete="off" />
+      </div>
+      <button class="btn btn--ghost filters-toggle" id="filtersToggle" type="button" aria-expanded="false" aria-controls="filters">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="icon"><path d="M3 6h18M7 12h10M11 18h2" /></svg>
+        Filters
+      </button>
+    </div>
+  </div>
+
+  <main class="layout">
+    <aside class="filters" id="filters" aria-label="Filter resources">
+      <div class="filters__scroll">
+        <section class="filter-group" data-group="field">
+          <h2 class="filter-group__title">Field of inquiry</h2>
+          <div class="filter-group__options" role="group" aria-label="Field of inquiry"></div>
+        </section>
+        <section class="filter-group" data-group="textType">
+          <h2 class="filter-group__title">Text type</h2>
+          <div class="filter-group__options" role="group" aria-label="Text type"></div>
+        </section>
+        <section class="filter-group" data-group="quality">
+          <h2 class="filter-group__title">Example</h2>
+          <div class="filter-group__options" role="group" aria-label="Example quality"></div>
+        </section>
+        <section class="filter-group" data-group="concept">
+          <h2 class="filter-group__title">Key concept</h2>
+          <div class="filter-group__options" role="group" aria-label="Key concept"></div>
+        </section>
+      </div>
+      <button class="btn btn--ghost btn--block" id="clearFilters" type="button" hidden>Clear all filters</button>
+    </aside>
+
+    <section class="results" id="results" aria-label="Resources" tabindex="-1">
+      <div class="results__head">
+        <p class="results__count" id="resultCount" aria-live="polite"></p>
+        <label class="sort">
+          <span class="sort__label">Sort</span>
+          <select id="sort" aria-label="Sort resources">
+            <option value="recent">Newest added</option>
+            <option value="field">By field</option>
+            <option value="title">Title A–Z</option>
+          </select>
+        </label>
+      </div>
+      <ul class="grid" id="grid"></ul>
+      <div class="empty" id="empty" hidden>
+        <p class="empty__title">Nothing matches yet</p>
+        <p class="empty__hint">Try clearing a filter, or add the first resource for this corner of the course.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <div class="site-foot__inner">
+      <p><strong>How it works.</strong> Paste a link, tap the field it belongs to, and it joins the shelf — saved to this browser instantly. To share an addition with the whole department, use <em>Copy submission</em> and send it on; the curator drops it into the master file and it appears for everyone.</p>
+      <p class="site-foot__meta">Grounded in the IB English A: Language &amp; Literature framework — five fields of inquiry, seven key concepts. A prototype for the ISH English department.</p>
+    </div>
+  </footer>
+
+  <!-- Add resource modal -->
+  <dialog class="modal" id="addModal" aria-labelledby="addTitle">
+    <form method="dialog" class="modal__form" id="addForm" novalidate>
+      <div class="modal__head">
+        <h2 class="modal__title" id="addTitle">Add a resource</h2>
+        <button class="icon-btn" type="button" id="closeModal" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="icon"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+      </div>
+
+      <div class="field">
+        <label for="urlInput">Link</label>
+        <input id="urlInput" name="url" type="url" inputmode="url" placeholder="https://…" required />
+        <p class="field__hint" id="urlHint">Paste the address of the text — a video, article, ad, image, anything.</p>
+      </div>
+
+      <div class="field">
+        <label for="titleInput">Title</label>
+        <input id="titleInput" name="title" type="text" placeholder="e.g. Nike — Dream Crazy" required />
+      </div>
+
+      <div class="field">
+        <span class="field__legend">Field of inquiry <em id="suggestNote" class="field__suggest" hidden></em></span>
+        <div class="chooser" id="fieldChooser" role="radiogroup" aria-label="Field of inquiry"></div>
+      </div>
+
+      <div class="field field--row">
+        <div class="field__col">
+          <label for="textTypeInput">Text type</label>
+          <select id="textTypeInput" name="textType"></select>
+        </div>
+        <div class="field__col">
+          <span class="field__legend">Example</span>
+          <div class="toggle" id="qualityToggle" role="radiogroup" aria-label="Example quality"></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="themesInput">Themes <span class="field__opt">optional</span></label>
+        <input id="themesInput" name="themes" type="text" placeholder="race, protest, branding (comma separated)" />
+      </div>
+
+      <div class="field">
+        <label for="noteInput">Teaching note <span class="field__opt">optional</span></label>
+        <textarea id="noteInput" name="note" rows="2" placeholder="What is it, and how would you use it in class?"></textarea>
+      </div>
+
+      <p class="form-error" id="formError" role="alert" hidden></p>
+
+      <div class="modal__foot">
+        <button class="btn btn--ghost" type="button" id="copySubmission">Copy submission</button>
+        <button class="btn btn--primary" type="submit" id="saveBtn">Add to shelf</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
