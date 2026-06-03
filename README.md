@@ -34,18 +34,27 @@ files that work offline and on free hosting. Nothing to break.
 Browse with the **theme / field / text-type / example** filters on the left, or **search** titles,
 tags and notes.
 
-## How sharing works (curator model)
+## How sharing works (Google Sheet backend — self-serve)
 
-A static site can't write to a shared file, so additions save to *your* browser. To share one
-with everyone:
+The whole department adds directly — **no curator, no emails**. Anyone who opens the tool can hit
+**Add a resource**, and it writes to one shared **Google Sheet** that every copy of the tool reads.
 
-1. In the Add dialog, click **Copy submission** — it copies a small JSON block.
-2. Send it to the curator (whoever owns the repo).
-3. The curator pastes it into the `window.SEED_RESOURCES` array in **`data.js`** and pushes.
-4. GitHub Pages rebuilds and everyone sees it.
+- **Read:** the site fetches the Sheet as JSON (via a small Apps Script web app) and merges it with
+  the built-in seed resources.
+- **Write:** the Add form POSTs the new resource to the same web app, which appends a row.
+- **One-time setup (~5 min, see `SETUP-SHARING.md`):** create a Google Sheet on the ISH account →
+  Extensions → Apps Script → paste `apps-script/Code.gs` → Deploy → Web app (*Execute as: Me*,
+  *Anyone*) → authorise → copy the `/exec` URL → paste it into `config.js` (`endpoint`) → push.
+- **Moderation:** hide a junk entry by setting its `status` cell to `hidden` in the Sheet.
 
-(If the department later wants instant, self-serve sharing, this can be upgraded to a tiny
-serverless backend without changing the front end. Out of scope for the prototype.)
+If `endpoint` is empty, the tool falls back to "this browser only" and the **Copy submission** button
+lets you hand a link to whoever maintains `data.js`.
+
+## Where it lives
+
+- **Primary:** the GitHub Pages link — pristine, full-screen, works anywhere. **`tanasel.github.io/ish-bodies-of-work`**
+- **Optional:** embedded in a Google Site (`sites.google.com/ishthehague.nl/bodiesofwork`) for an
+  ISH-login-only mirror — but Google Sites adds a page frame, so the direct link looks best.
 
 ---
 

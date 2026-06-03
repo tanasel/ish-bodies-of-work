@@ -197,11 +197,11 @@
     const pill = $("#shelfStatus");
     if (!pill) return;
     pill.hidden = false;
-    pill.classList.toggle("is-shared", mode === "shared");
+    pill.classList.toggle("is-shared", mode === "shared" || mode === "local");
     if (mode === "shared") pill.textContent = "On the shared shelf — additions are visible to the whole team";
     else if (mode === "connecting") pill.textContent = "Connecting to the shared shelf…";
     else if (mode === "error") pill.textContent = "Shared shelf unreachable — additions save to this browser";
-    else pill.textContent = "This browser only — additions stay on your device";
+    else pill.textContent = "A shared shelf for the English department";
   }
   function initShared() {
     if (!ENDPOINT) { setShelf("local"); return; }
