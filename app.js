@@ -79,12 +79,15 @@
   const fieldColor = (slug) => (fieldBySlug[slug] ? fieldBySlug[slug].color : "var(--ink)");
   const themeLabel = (slug) => (themeBySlug[slug] ? themeBySlug[slug].label : slug);
   const STORE_KEY = "bodiesOfWork.local.v1";
+  const HIDE_KEY = "bodiesOfWork.hidden.v1";
   const ENDPOINT = (window.BOW_CONFIG && typeof window.BOW_CONFIG.endpoint === "string" ? window.BOW_CONFIG.endpoint : "").trim();
 
   /* ---------- State ---------- */
   const state = {
     items: [],
     shared: [],
+    hiddenIds: new Set(),
+    hiddenRows: [],
     filters: { theme: new Set(), field: new Set(), textType: new Set(), quality: new Set() },
     search: "",
     sort: "recent",
@@ -172,7 +175,7 @@
       if (key) seen.add(key);
       out.push(r);
     }
-    state.items = out;
+    state.items = out.filter((r) => !state.hiddenIds.has(String(r.id)));
   }
 
   /* ---------- Shared shelf (Google Sheet via Apps Script) ---------- */
@@ -182,8 +185,21 @@
       const res = await fetch(ENDPOINT, { method: "GET" });
       if (!res.ok) throw new Error("HTTP " + res.status);
       const data = await res.json();
-      return data && Array.isArray(data.resources) ? data.resources : [];
+      return data && Array.isArray(data.resources) ? data : null;
     } catch (e) { return null; }
+  }
+  function localHidden() {
+    try { const a = JSON.parse(localStorage.getItem(HIDE_KEY) || "[]"); return Array.isArray(a) ? a.map(String) : []; }
+    catch { return []; }
+  }
+  function saveLocalHidden(arr) {
+    try { localStorage.setItem(HIDE_KEY, JSON.stringify([...new Set(arr.map(String))])); } catch { /* ignore */ }
+  }
+  function applyShared(data) {
+    state.shared = Array.isArray(data.resources) ? data.resources : [];
+    state.hiddenRows = Array.isArray(data.hidden) ? data.hidden : [];
+    const server = Array.isArray(data.hiddenIds) ? data.hiddenIds.map(String) : [];
+    state.hiddenIds = new Set([...server, ...localHidden()]);
   }
   async function postShared(rec) {
     await fetch(ENDPOINT, {
@@ -206,8 +222,8 @@
   function initShared() {
     if (!ENDPOINT) { setShelf("local"); return; }
     setShelf("connecting");
-    fetchShared().then((shared) => {
-      if (shared) { state.shared = shared; refreshAll(); setShelf("shared"); }
+    fetchShared().then((data) => {
+      if (data) { applyShared(data); refreshAll(); setShelf("shared"); }
       else { setShelf("error"); }
     });
   }
@@ -262,6 +278,7 @@
 
     updateFilterCounts();
     updateMastheadStats();
+    updateBinButton();
     $("#clearFilters").hidden = !anyFilterActive();
   }
 
@@ -334,11 +351,11 @@
     } else {
       const span = el("span", "card__ttype"); span.textContent = "No public link"; foot.appendChild(span);
     }
-    if (item.addedBy === "me") {
-      const del = el("button", "card__del"); del.type = "button"; del.textContent = "Remove";
-      del.addEventListener("click", () => removeItem(item.id));
-      foot.appendChild(del);
-    }
+    const del = el("button", "card__del"); del.type = "button"; del.textContent = "Remove";
+    del.setAttribute("aria-label", "Remove “" + (item.title || "this resource") + "” from the shelf");
+    if (item.addedBy === "me") del.addEventListener("click", () => removeLocal(item.id));
+    else del.addEventListener("click", () => hideItem(item));
+    foot.appendChild(del);
     li.appendChild(foot);
     return li;
   }
@@ -579,8 +596,8 @@
     saveBtn.disabled = true;
     toast("Adding to the shared shelf…");
     try { await postShared(rec); } catch (e) { /* opaque (no-cors); confirmed by refetch */ }
-    const shared = await fetchShared();
-    if (shared) state.shared = shared;
+    const data = await fetchShared();
+    if (data) applyShared(data);
     refreshAll();
     saveBtn.disabled = false;
     const key = normalizedUrlKey(rec.url);
@@ -593,12 +610,152 @@
     }
   }
 
-  function removeItem(id) {
-    if (!window.confirm("Remove this resource from your shelf?")) return;
-    const local = loadLocal().filter((r) => r.id !== id);
-    saveLocal(local);
+  function clip(s, n) { s = toText(s); n = n || 42; return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+
+  function removeLocal(id) {
+    const local = loadLocal();
+    const rec = local.find((r) => String(r.id) === String(id));
+    saveLocal(local.filter((r) => String(r.id) !== String(id)));
     refreshAll();
-    toast("Removed");
+    if (rec) toast("Removed “" + clip(rec.title) + "”", { label: "Undo", fn: () => { const l = loadLocal(); l.unshift(rec); saveLocal(l); refreshAll(); toast("Restored"); } });
+    else toast("Removed");
+  }
+
+  // Pending hides are committed to the server only AFTER the undo window,
+  // so an immediate Undo cancels with no server round-trip (and no hide/unhide race).
+  const pendingHides = new Map(); // id -> timeoutId
+  const UNDO_MS = 5000;
+
+  function hideItem(item) {
+    const id = String(item.id);
+    state.hiddenIds.add(id);
+    if (item.addedBy !== "seed" && !(state.hiddenRows || []).some((r) => String(r.id) === id)) {
+      state.hiddenRows = (state.hiddenRows || []).concat([item]); // optimistic bin entry
+    }
+    if (ENDPOINT) {
+      if (pendingHides.has(id)) clearTimeout(pendingHides.get(id));
+      pendingHides.set(id, setTimeout(() => { pendingHides.delete(id); postShared({ action: "hide", id }); }, UNDO_MS));
+    } else {
+      const h = localHidden(); h.push(id); saveLocalHidden(h);
+    }
+    refreshAll();
+    toast("Removed “" + clip(item.title) + "”", { label: "Undo", fn: () => unhideItem(id) });
+  }
+
+  function unhideItem(id) {
+    id = String(id);
+    state.hiddenIds.delete(id);
+    state.hiddenRows = (state.hiddenRows || []).filter((r) => String(r.id) !== id);
+    if (pendingHides.has(id)) {
+      clearTimeout(pendingHides.get(id)); pendingHides.delete(id); // hide never committed — just cancel it
+    } else if (ENDPOINT) {
+      postShared({ action: "unhide", id }); // restore an already-committed hide
+    } else {
+      saveLocalHidden(localHidden().filter((x) => x !== id));
+    }
+    refreshAll();
+    toast("Restored");
+  }
+
+  // If the page is closed during an undo window, commit the pending hides best-effort.
+  window.addEventListener("beforeunload", () => {
+    if (!ENDPOINT || !pendingHides.size) return;
+    pendingHides.forEach((t, id) => {
+      clearTimeout(t);
+      try { navigator.sendBeacon(ENDPOINT, JSON.stringify({ action: "hide", id })); } catch (e) { /* best effort */ }
+    });
+    pendingHides.clear();
+  });
+
+  /* ---------- Hidden items (recycle bin) ---------- */
+  function binItems() {
+    const ids = state.hiddenIds;
+    const out = [];
+    const seen = new Set();
+    (state.hiddenRows || []).forEach((r) => {
+      const id = String((r && r.id) || "");
+      if (id && ids.has(id) && !seen.has(id)) { seen.add(id); const n = normalizeResource(r, "shared"); if (n) out.push(n); }
+    });
+    const seed = Array.isArray(window.SEED_RESOURCES) ? window.SEED_RESOURCES : [];
+    seed.forEach((r) => {
+      const id = String((r && r.id) || "");
+      if (id && ids.has(id) && !seen.has(id)) { seen.add(id); const n = normalizeResource(r, "seed"); if (n) out.push(n); }
+    });
+    return out;
+  }
+
+  function ensureBinButton() {
+    let b = $("#binBtn");
+    if (b) return b;
+    b = el("button", "binbtn"); b.id = "binBtn"; b.type = "button"; b.hidden = true;
+    b.addEventListener("click", openBin);
+    const head = $(".results__head");
+    const sortEl = head ? head.querySelector(".sort") : null;
+    if (head && sortEl) head.insertBefore(b, sortEl);
+    else if (head) head.appendChild(b);
+    return b;
+  }
+  function updateBinButton() {
+    const b = ensureBinButton();
+    const n = binItems().length;
+    b.hidden = n === 0;
+    b.textContent = "Hidden (" + n + ")";
+  }
+
+  function openBin() { renderBin(); }
+  function renderBin() {
+    let dlg = $("#binModal");
+    if (!dlg) {
+      dlg = el("dialog", "modal"); dlg.id = "binModal";
+      dlg.addEventListener("cancel", (e) => { e.preventDefault(); dlg.close(); });
+      document.body.appendChild(dlg);
+    }
+    dlg.textContent = "";
+    const wrap = el("div", "modal__form");
+    const head = el("div", "modal__head");
+    const h = el("h2", "modal__title"); h.textContent = "Hidden items";
+    const close = el("button", "icon-btn"); close.type = "button"; close.setAttribute("aria-label", "Close");
+    close.appendChild(iconX());
+    close.addEventListener("click", () => dlg.close());
+    head.append(h, close); wrap.appendChild(head);
+
+    const items = binItems();
+    if (!items.length) {
+      const p = el("p", "bin-intro"); p.textContent = "Nothing is hidden. When you remove a resource it lands here, so you can always put it back.";
+      wrap.appendChild(p);
+    } else {
+      const intro = el("p", "bin-intro");
+      intro.textContent = (items.length === 1 ? "1 hidden resource" : items.length + " hidden resources") + " — restore any to put it back on the shelf for everyone.";
+      wrap.appendChild(intro);
+      const ul = el("ul", "bin-list");
+      items.forEach((it) => {
+        const li = el("li", "bin-item");
+        const info = el("div", "bin-item__info");
+        const t = el("p", "bin-item__title"); t.textContent = it.title || "Untitled";
+        const meta = el("p", "bin-item__meta");
+        const bits = [];
+        (it.themes || []).slice(0, 2).forEach((th) => bits.push(themeLabel(th)));
+        if (it.textType && typeLabel[it.textType]) bits.push(typeLabel[it.textType]);
+        if (it.source) bits.push(it.source);
+        meta.textContent = bits.join(" · ");
+        info.append(t, meta);
+        const btn = el("button", "btn btn--ghost bin-item__restore"); btn.type = "button"; btn.textContent = "Restore";
+        btn.addEventListener("click", () => { unhideItem(it.id); li.remove(); if (!ul.children.length) dlg.close(); });
+        li.append(info, btn);
+        ul.appendChild(li);
+      });
+      wrap.appendChild(ul);
+    }
+    dlg.appendChild(wrap);
+    if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
+  }
+
+  function iconX() {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("class", "icon"); svg.setAttribute("aria-hidden", "true");
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", "M6 6l12 12M18 6L6 18");
+    svg.appendChild(p); return svg;
   }
 
   async function copySubmission() {
@@ -631,16 +788,25 @@
   function nowSeconds() { try { return Math.floor(Date.now() / 1000); } catch { return state.items.length + 1; } }
 
   let toastTimer = null;
-  function toast(msg) {
+  function hideToast() { const t = $("#toast"); t.classList.remove("show"); setTimeout(() => { t.hidden = true; }, 260); }
+  function toast(msg, action) {
     const t = $("#toast");
-    t.textContent = msg; t.hidden = false;
+    t.textContent = "";
+    const span = el("span", "toast__msg"); span.textContent = msg; t.appendChild(span);
+    if (action && action.label && typeof action.fn === "function") {
+      const b = el("button", "toast__action"); b.type = "button"; b.textContent = action.label;
+      b.addEventListener("click", () => { clearTimeout(toastTimer); hideToast(); action.fn(); });
+      t.appendChild(b);
+    }
+    t.hidden = false;
     requestAnimationFrame(() => t.classList.add("show"));
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { t.classList.remove("show"); setTimeout(() => { t.hidden = true; }, 260); }, 2600);
+    toastTimer = setTimeout(hideToast, action ? 6500 : 2600);
   }
 
   /* ---------- Wiring ---------- */
   function init() {
+    state.hiddenIds = new Set(localHidden());
     buildItems();
     buildFilters();
     buildModalControls();

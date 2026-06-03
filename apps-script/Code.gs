@@ -40,40 +40,55 @@ function splitList_(v) {
   return String(v == null ? "" : v).split(",").map(function (s) { return s.trim(); }).filter(Boolean);
 }
 
+function rowToObj_(r, i) {
+  return {
+    id: String(r[i.id] || ""),
+    title: String(r[i.title] || ""),
+    url: String(r[i.url] || ""),
+    source: String(r[i.source] || ""),
+    themes: splitList_(r[i.themes]),
+    field: String(r[i.field] || ""),
+    textType: String(r[i.textType] || ""),
+    quality: String(r[i.quality] || "neutral"),
+    tags: splitList_(r[i.tags]),
+    note: String(r[i.note] || ""),
+    year: r[i.year] === "" ? "" : r[i.year],
+    addedByName: String(r[i.addedByName] || ""),
+    addedAt: r[i.timestamp] ? Math.floor(new Date(r[i.timestamp]).getTime() / 1000) : 0,
+    addedBy: "shared"
+  };
+}
+
 function doGet() {
   var sh = sheet_();
   var rows = sh.getDataRange().getValues();
   var i = {};
   HEADERS.forEach(function (h, n) { i[h] = n; });
   var out = [];
+  var hidden = [];      // hidden team additions (full data, for the "Hidden items" bin)
+  var hiddenIds = [];   // every hidden id (additions + seed tombstones) — the site filters these out
   rows.forEach(function (r, idx) {
     if (idx === 0) return; // header row
     if (String(r[i.id]) === "id" || String(r[i.timestamp]) === "timestamp") return; // stray header
-    if (String(r[i.status] || "").toLowerCase() === "hidden") return;
-    if (!r[i.url] && !r[i.title]) return;
-    out.push({
-      id: String(r[i.id] || ""),
-      title: String(r[i.title] || ""),
-      url: String(r[i.url] || ""),
-      source: String(r[i.source] || ""),
-      themes: splitList_(r[i.themes]),
-      field: String(r[i.field] || ""),
-      textType: String(r[i.textType] || ""),
-      quality: String(r[i.quality] || "neutral"),
-      tags: splitList_(r[i.tags]),
-      note: String(r[i.note] || ""),
-      year: r[i.year] === "" ? "" : r[i.year],
-      addedByName: String(r[i.addedByName] || ""),
-      addedAt: r[i.timestamp] ? Math.floor(new Date(r[i.timestamp]).getTime() / 1000) : 0,
-      addedBy: "shared"
-    });
+    var id = String(r[i.id] || "");
+    if (String(r[i.status] || "").toLowerCase() === "hidden") {
+      if (id) hiddenIds.push(id);
+      if (r[i.url] || r[i.title]) hidden.push(rowToObj_(r, i)); // a real (team-added) hidden entry
+      return; // a seed tombstone has no url/title — only its id matters
+    }
+    if (!r[i.url] && !r[i.title]) return; // blank row
+    out.push(rowToObj_(r, i));
   });
-  return json_({ ok: true, count: out.length, resources: out });
+  return json_({ ok: true, count: out.length, resources: out, hiddenIds: hiddenIds, hidden: hidden });
 }
 
 function doPost(e) {
   try {
     var body = JSON.parse((e && e.postData && e.postData.contents) || "{}");
+    var action = String(body.action || "").toLowerCase();
+    if (action === "hide") return setHidden_(body.id, true);
+    if (action === "unhide") return setHidden_(body.id, false);
+
     var title = String(body.title || "").trim();
     var url = String(body.url || "").trim();
     var themes = (Array.isArray(body.themes) ? body.themes : splitList_(body.themes))
@@ -106,4 +121,39 @@ function doPost(e) {
   } catch (err) {
     return json_({ ok: false, error: String(err) });
   }
+}
+
+/* Hide (soft, reversible) or unhide a resource by id.
+   - A team addition (a real sheet row): set/clear its `status` cell.
+   - A seed resource (lives in the site's data.js, not the sheet): record the hide
+     as a tombstone row (id + status=hidden, no content); unhide deletes that row.
+   Nothing is ever hard-deleted, so every removal is reversible. */
+function setHidden_(id, makeHidden) {
+  id = String(id || "").trim();
+  if (!id) return json_({ ok: false, error: "missing id" });
+  var sh = sheet_();
+  var rows = sh.getDataRange().getValues();
+  var i = {};
+  HEADERS.forEach(function (h, n) { i[h] = n; });
+  for (var r = 1; r < rows.length; r++) {
+    if (String(rows[r][i.id]) === id) {
+      if (makeHidden) {
+        sh.getRange(r + 1, i.status + 1).setValue("hidden");
+      } else if (rows[r][i.url] || rows[r][i.title]) {
+        sh.getRange(r + 1, i.status + 1).setValue(""); // restore a real addition
+      } else {
+        sh.deleteRow(r + 1); // remove a seed-hide tombstone → seed reappears
+      }
+      return json_({ ok: true, id: id, hidden: makeHidden });
+    }
+  }
+  if (makeHidden) {
+    var tomb = HEADERS.map(function () { return ""; });
+    tomb[i.timestamp] = new Date();
+    tomb[i.id] = id;
+    tomb[i.status] = "hidden";
+    sh.appendRow(tomb);
+    return json_({ ok: true, id: id, hidden: true });
+  }
+  return json_({ ok: true, id: id, hidden: false });
 }
