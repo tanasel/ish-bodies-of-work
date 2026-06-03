@@ -7,11 +7,11 @@
 
   /* ---------- Controlled vocabulary (kept in sync with the add form) ---------- */
   const FIELDS = [
-    { slug: "culture-identity-community", label: "Culture, identity & community", color: "#c79a55" },
-    { slug: "beliefs-values-education", label: "Beliefs, values & education", color: "#6f9a86" },
-    { slug: "politics-power-justice", label: "Politics, power & justice", color: "#c2615a" },
-    { slug: "art-creativity-imagination", label: "Art, creativity & the imagination", color: "#9a86bd" },
-    { slug: "science-technology-environment", label: "Science, technology & the environment", color: "#5e93b0" },
+    { slug: "culture-identity-community", label: "Culture, identity & community", color: "var(--f-culture)" },
+    { slug: "beliefs-values-education", label: "Beliefs, values & education", color: "var(--f-beliefs)" },
+    { slug: "politics-power-justice", label: "Politics, power & justice", color: "var(--f-politics)" },
+    { slug: "art-creativity-imagination", label: "Art, creativity & the imagination", color: "var(--f-art)" },
+    { slug: "science-technology-environment", label: "Science, technology & the environment", color: "var(--f-science)" },
   ];
 
   const TEXT_TYPES = [
@@ -324,7 +324,7 @@
   function buildFilters() {
     fillChips("field", FIELDS.map((f) => ({ value: f.slug, label: f.label, color: f.color })));
     fillChips("textType", presentTextTypes().map(([v, l]) => ({ value: v, label: l })));
-    fillChips("quality", [{ value: "good", label: "Good", color: "#7faa78" }, { value: "bad", label: "Bad", color: "#cf7b6b" }, { value: "neutral", label: "Neutral" }]);
+    fillChips("quality", [{ value: "good", label: "Good", color: "var(--good)" }, { value: "bad", label: "Bad", color: "var(--bad)" }, { value: "neutral", label: "Neutral" }]);
     fillChips("concept", CONCEPTS.map((c) => ({ value: c, label: cap(c) })));
   }
 

@@ -5,8 +5,8 @@ window.SEED_RESOURCES = [
   {
     "id": "dove-real-beauty-sketches",
     "title": "Dove — Real Beauty Sketches",
-    "url": "https://www.youtube.com/watch?v=XpaOjMXyJGk",
-    "source": "YouTube (Dove)",
+    "url": "https://www.youtube.com/watch?v=HGMX99j52xI",
+    "source": "YouTube",
     "field": "culture-identity-community",
     "textType": "advertisement",
     "concepts": [
@@ -27,8 +27,8 @@ window.SEED_RESOURCES = [
   {
     "id": "always-like-a-girl",
     "title": "Always — #LikeAGirl",
-    "url": "https://www.youtube.com/watch?v=XjJQBjWYDTs",
-    "source": "YouTube (Always)",
+    "url": "https://www.youtube.com/watch?v=U8BEBWWLgoE",
+    "source": "YouTube",
     "field": "culture-identity-community",
     "textType": "advertisement",
     "concepts": [
@@ -49,8 +49,8 @@ window.SEED_RESOURCES = [
   {
     "id": "gillette-best-men-can-be",
     "title": "Gillette — The Best Men Can Be (#MeToo)",
-    "url": "https://www.youtube.com/watch?v=koPmuEyP3a0",
-    "source": "YouTube (Gillette)",
+    "url": "https://www.youtube.com/watch?v=ldZlELx1zJg",
+    "source": "YouTube",
     "field": "culture-identity-community",
     "textType": "advertisement",
     "concepts": [
@@ -138,7 +138,7 @@ window.SEED_RESOURCES = [
     "id": "nike-dream-crazy-kaepernick",
     "title": "Nike — Dream Crazy (Colin Kaepernick)",
     "url": "https://www.youtube.com/watch?v=AJIZqB7I4dQ",
-    "source": "YouTube (Nike)",
+    "source": "YouTube",
     "field": "politics-power-justice",
     "textType": "film-tv",
     "concepts": [
