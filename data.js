@@ -1,5 +1,5 @@
 /* Seed resources for the Bodies of Work library.
-   The English department's own collection (from Eszther's deck), URL-verified.
+   The English department's own collection (from the department's slide deck), URL-verified.
    This file is the "master shelf" — the curator appends new submissions here. */
 window.SEED_RESOURCES = [
   {

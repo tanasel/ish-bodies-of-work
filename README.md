@@ -5,7 +5,7 @@ speeches, opinion columns, photographs, films. A teacher drops in a link, taps t
 **theme(s)** it belongs to, and it joins a browsable, filterable, searchable shelf.
 No slideshow to maintain, no folder to tidy.
 
-Built **from the department's own collection** (Eszther's *Bodies of Work* deck) for the ISH
+Built **from the department's own collection** (the *Bodies of Work* slide deck) for the ISH
 English department — organised by theme, with the IB fields of inquiry as a second lens.
 
 ---
