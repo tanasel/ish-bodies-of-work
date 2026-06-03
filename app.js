@@ -43,10 +43,12 @@
   const textTypeSet = new Set(TEXT_TYPES.map(([v]) => v));
   const qualitySet = new Set(QUALITIES.map(([v]) => v));
   const STORE_KEY = "bodiesOfWork.local.v1";
+  const ENDPOINT = (window.BOW_CONFIG && typeof window.BOW_CONFIG.endpoint === "string" ? window.BOW_CONFIG.endpoint : "").trim();
 
   /* ---------- State ---------- */
   const state = {
     items: [],
+    shared: [],
     filters: { field: new Set(), textType: new Set(), quality: new Set(), concept: new Set() },
     search: "",
     sort: "recent",
@@ -124,10 +126,16 @@
   function buildItems() {
     const seed = Array.isArray(window.SEED_RESOURCES) ? window.SEED_RESOURCES : [];
     const local = loadLocal();
+    const shared = Array.isArray(state.shared) ? state.shared : [];
     const seen = new Set();
     const out = [];
-    // Local additions take priority (most recent first), then seed; dedupe by URL.
-    for (const [raw, addedBy] of [...local.map((r) => [r, "me"]), ...seed.map((r) => [r, "seed"])]) {
+    // Local optimistic adds, then the shared shelf, then the built-in seed; dedupe by URL.
+    const tagged = [].concat(
+      local.map((r) => [r, "me"]),
+      shared.map((r) => [r, "shared"]),
+      seed.map((r) => [r, "seed"])
+    );
+    for (const [raw, addedBy] of tagged) {
       const r = normalizeResource(raw, addedBy);
       if (!r) continue;
       const key = normalizedUrlKey(r.url) || ("id:" + r.id);
@@ -137,6 +145,49 @@
     }
     state.items = out;
   }
+
+  /* ---------- Shared shelf (Google Sheet via Apps Script) ---------- */
+  async function fetchShared() {
+    if (!ENDPOINT) return null;
+    try {
+      const res = await fetch(ENDPOINT, { method: "GET" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      return data && Array.isArray(data.resources) ? data.resources : [];
+    } catch (e) {
+      return null; // null = couldn't reach the shared shelf
+    }
+  }
+  async function postShared(rec) {
+    // text/plain keeps it a "simple" request (no CORS preflight); no-cors response is opaque,
+    // so success is confirmed by re-fetching the shelf afterwards.
+    await fetch(ENDPOINT, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(rec),
+    });
+  }
+  function setShelf(mode) {
+    const pill = $("#shelfStatus");
+    if (!pill) return;
+    pill.hidden = false;
+    pill.classList.toggle("is-shared", mode === "shared");
+    if (mode === "shared") pill.textContent = "On the shared shelf — additions are visible to the whole team";
+    else if (mode === "connecting") pill.textContent = "Connecting to the shared shelf…";
+    else if (mode === "error") pill.textContent = "Shared shelf unreachable — additions save to this browser";
+    else pill.textContent = "This browser only — additions stay on your device";
+  }
+  function initShared() {
+    if (!ENDPOINT) { setShelf("local"); return; }
+    setShelf("connecting");
+    fetchShared().then((shared) => {
+      if (shared) { state.shared = shared; refreshAll(); setShelf("shared"); }
+      else { setShelf("error"); }
+    });
+  }
+  function refreshAll() { buildItems(); buildFilters(); reapplyPressed(); render(); }
+  function existingKeys() { return new Set(state.items.map((it) => normalizedUrlKey(it.url)).filter(Boolean)); }
 
   /* ---------- Filtering ---------- */
   function matches(item) {
@@ -472,25 +523,47 @@
     return null;
   }
 
-  function onSubmit(e) {
+  function persistLocal(rec) {
+    const local = loadLocal();
+    local.unshift(rec);
+    return saveLocal(local);
+  }
+
+  async function onSubmit(e) {
     e.preventDefault();
+    const box = $("#formError");
     const rec = collectForm();
     const err = validate(rec);
-    if (err) { const box = $("#formError"); box.textContent = err; box.hidden = false; return; }
-    const local = loadLocal();
-    // de-dupe by URL within local store
-    const key = safeHref(rec.url).toLowerCase();
-    if (local.some((r) => (safeHref(r.url) || "").toLowerCase() === key) || (window.SEED_RESOURCES || []).some((r) => (safeHref(r.url) || "").toLowerCase() === key)) {
-      const box = $("#formError"); box.textContent = "That link is already on the shelf."; box.hidden = false; return;
-    }
-    local.unshift(rec);
-    if (!saveLocal(local)) { const box = $("#formError"); box.textContent = "Couldn't save to this browser's storage."; box.hidden = false; return; }
-    buildItems();
-    buildFilters();
-    reapplyPressed();
-    render();
+    if (err) { box.textContent = err; box.hidden = false; return; }
+    const key = normalizedUrlKey(rec.url);
+    if (key && existingKeys().has(key)) { box.textContent = "That link is already on the shelf."; box.hidden = false; return; }
+
+    if (ENDPOINT) { await addToShared(rec, box); return; }
+
+    if (!persistLocal(rec)) { box.textContent = "Couldn't save to this browser's storage."; box.hidden = false; return; }
+    refreshAll();
     closeModal();
-    toast("Added to the shelf");
+    toast("Added — saved on this device");
+  }
+
+  async function addToShared(rec) {
+    const saveBtn = $("#saveBtn");
+    saveBtn.disabled = true;
+    toast("Adding to the shared shelf…");
+    try { await postShared(rec); } catch (e) { /* opaque (no-cors); confirmed by refetch below */ }
+    const shared = await fetchShared();
+    if (shared) state.shared = shared;
+    refreshAll();
+    saveBtn.disabled = false;
+    const key = normalizedUrlKey(rec.url);
+    if (key && existingKeys().has(key)) {
+      closeModal();
+      toast("Added to the shared shelf");
+    } else {
+      // couldn't confirm the write — keep it on this device so nothing is lost
+      persistLocal(rec); refreshAll(); closeModal();
+      toast("Saved on this device — couldn't reach the shared shelf");
+    }
   }
 
   function removeItem(id) {
@@ -566,6 +639,8 @@
       const open = $("#filters").classList.toggle("open");
       toggle.setAttribute("aria-expanded", open ? "true" : "false");
     });
+
+    initShared();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

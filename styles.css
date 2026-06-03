@@ -185,6 +185,24 @@ a { color: inherit; }
   font-variant-numeric: tabular-nums;
 }
 .stat span { color: var(--ink); font-weight: 600; }
+.shelf-status {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  color: var(--ink-mute);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.shelf-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-mute);
+  flex: none;
+}
+.shelf-status.is-shared { color: var(--good); }
+.shelf-status.is-shared::before { background: var(--good); }
 
 /* ---------- Toolbar ---------- */
 .toolbar {
