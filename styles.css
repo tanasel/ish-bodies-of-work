@@ -417,6 +417,7 @@ select {
   line-height: 1.16;
   letter-spacing: 0;
   color: var(--ink);
+  overflow-wrap: anywhere;
 }
 .card__source {
   margin: 0 0 14px;
@@ -448,7 +449,8 @@ select {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px 10px;
   padding-top: 14px;
   border-top: var(--rule) solid var(--ink);
 }
@@ -466,6 +468,7 @@ select {
 }
 .card__open:hover { background: var(--hot); color: var(--paper); }
 .card__ttype { font-family: "JetBrains Mono", monospace; font-size: 0.84rem; line-height: 1.35; color: var(--ink-mute); }
+.card__field { font-family: "JetBrains Mono", monospace; font-size: 0.74rem; color: var(--ink-mute); margin-right: auto; }
 .card__del {
   background: none;
   border: 0;

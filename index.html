@@ -54,6 +54,10 @@
   <main class="layout">
     <aside class="filters" id="filters" aria-label="Filter resources">
       <div class="filters__scroll">
+        <section class="filter-group" data-group="theme">
+          <h2 class="filter-group__title">Theme</h2>
+          <div class="filter-group__options" role="group" aria-label="Theme"></div>
+        </section>
         <section class="filter-group" data-group="field">
           <h2 class="filter-group__title">Field of inquiry</h2>
           <div class="filter-group__options" role="group" aria-label="Field of inquiry"></div>
@@ -66,10 +70,6 @@
           <h2 class="filter-group__title">Example</h2>
           <div class="filter-group__options" role="group" aria-label="Example quality"></div>
         </section>
-        <section class="filter-group" data-group="concept">
-          <h2 class="filter-group__title">Key concept</h2>
-          <div class="filter-group__options" role="group" aria-label="Key concept"></div>
-        </section>
       </div>
       <button class="btn btn--ghost btn--block" id="clearFilters" type="button" hidden>Clear all filters</button>
     </aside>
@@ -81,7 +81,7 @@
           <span class="sort__label">Sort</span>
           <select id="sort" aria-label="Sort resources">
             <option value="recent">Newest added</option>
-            <option value="field">By field</option>
+            <option value="theme">By theme</option>
             <option value="title">Title A–Z</option>
           </select>
         </label>
@@ -96,8 +96,8 @@
 
   <footer class="site-foot">
     <div class="site-foot__inner">
-      <p><strong>How it works.</strong> Paste a link, tap the field it belongs to, and it joins the shelf — saved to this browser instantly. To share an addition with the whole department, use <em>Copy submission</em> and send it on; the curator drops it into the master file and it appears for everyone.</p>
-      <p class="site-foot__meta">Grounded in the IB English A: Language &amp; Literature framework — five fields of inquiry, seven key concepts. A prototype for the ISH English department.</p>
+      <p><strong>How it works.</strong> Paste a link, tap the theme(s) it belongs to, and it joins the shelf — saved to this browser instantly. To share an addition with the whole department, use <em>Copy submission</em> and send it on; the curator drops it into the master file and it appears for everyone.</p>
+      <p class="site-foot__meta">Organised by theme, aligned to the IB English A: Language &amp; Literature fields of inquiry. Built from the ISH English department's own collection.</p>
     </div>
   </footer>
 
@@ -123,8 +123,8 @@
       </div>
 
       <div class="field">
-        <span class="field__legend">Field of inquiry <em id="suggestNote" class="field__suggest" hidden></em></span>
-        <div class="chooser" id="fieldChooser" role="radiogroup" aria-label="Field of inquiry"></div>
+        <span class="field__legend">Theme(s) <em id="suggestNote" class="field__suggest" hidden></em></span>
+        <div class="chooser" id="themeChooser" role="group" aria-label="Themes"></div>
       </div>
 
       <div class="field field--row">
@@ -139,8 +139,8 @@
       </div>
 
       <div class="field">
-        <label for="themesInput">Themes <span class="field__opt">optional</span></label>
-        <input id="themesInput" name="themes" type="text" placeholder="race, protest, branding (comma separated)" />
+        <label for="themesInput">Tags / keywords <span class="field__opt">optional</span></label>
+        <input id="themesInput" name="tags" type="text" placeholder="e.g. migration, refugees, rhetoric (comma separated)" />
       </div>
 
       <div class="field">

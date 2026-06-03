@@ -1,12 +1,12 @@
 # Bodies of Work — ISH English resource library
 
 A shared, self-sorting library of the **non-literary texts worth teaching** — ad campaigns,
-speeches, opinion columns, photographs, films. A teacher drops in a link, taps which IB
-**field of inquiry** it belongs to, and it joins a browsable, filterable, searchable shelf.
+speeches, opinion columns, photographs, films. A teacher drops in a link, taps the
+**theme(s)** it belongs to, and it joins a browsable, filterable, searchable shelf.
 No slideshow to maintain, no folder to tidy.
 
-Built as a **prototype** for the ISH English department to react to before we wire up
-department-wide sharing.
+Built **from the department's own collection** (Eszther's *Bodies of Work* deck) for the ISH
+English department — organised by theme, with the IB fields of inquiry as a second lens.
 
 ---
 
@@ -14,9 +14,9 @@ department-wide sharing.
 
 The original idea was for AI to read each link and sort it. But the real pain isn't
 *classifying* — it's that *organising* is a separate chore nobody has time for. So we made
-**adding = organising**: when you paste a link you tap its field (one of five buttons), and a
-plain **keyword suggester** (a lookup table, not an LLM) usually pre-selects it for you, so it's
-just a confirm-tap.
+**adding = organising**: when you paste a link you tap its theme(s), and a
+plain **keyword suggester** (a lookup table, not an LLM) usually pre-selects them for you, so it's
+just a confirm-tap. (The IB field of inquiry fills in automatically from the theme.)
 
 The result needs **no API key, no account, no server, no cost** — it's a handful of static
 files that work offline and on free hosting. Nothing to break.
@@ -27,12 +27,12 @@ files that work offline and on free hosting. Nothing to break.
 
 1. Click **Add a resource**.
 2. Paste the **link** and give it a short **title**.
-3. The **field of inquiry** is usually pre-suggested from the link — tap to confirm or change.
-4. Optionally set the text type, mark it a **good / bad example**, add themes or a teaching note.
+3. The **theme(s)** are usually pre-suggested from the link — tap to confirm or change.
+4. Optionally set the text type, mark it a **good / bad example**, add tags or a teaching note.
 5. **Add to shelf** — it appears immediately (saved in your browser).
 
-Browse with the **field / text-type / example** filters on the left, or **search** titles,
-themes and notes.
+Browse with the **theme / field / text-type / example** filters on the left, or **search** titles,
+tags and notes.
 
 ## How sharing works (curator model)
 
@@ -49,18 +49,19 @@ serverless backend without changing the front end. Out of scope for the prototyp
 
 ---
 
-## Categories (IB English A: Language & Literature)
+## Categories
 
-- **Fields of inquiry** (where examples like "race / gender" land): Culture, identity & community ·
-  Beliefs, values & education · Politics, power & justice · Art, creativity & the imagination ·
-  Science, technology & the environment.
-- **Key concepts**: identity, culture, creativity, communication, perspective, transformation,
-  representation.
+- **Theme** (primary — how the department's deck is organised): Race · War · Gender ·
+  Mental health · Feminism · LGBTQI+ · Environment · Inequality · Social mobility · Modernisation.
+- **Field of inquiry** (secondary — IB English A: Language & Literature): Culture, identity &
+  community · Beliefs, values & education · Politics, power & justice · Art, creativity & the
+  imagination · Science, technology & the environment. (Auto-derived from the theme when adding.)
 - **Text types**: advertisement, opinion column, speech, blog, infographic, cartoon, photograph,
-  film/TV, song, website, news article, social media, poster, podcast.
+  film/TV, song, website, news article, social media, poster, podcast, artwork.
 
-The 16 seed resources (MLK, Nike *Dream Crazy*, Greta Thunberg, Dove, *This Is America*,
-Apple *1984*, Banksy, the xkcd temperature timeline…) are real, URL-verified teaching texts.
+The **43 resources** come straight from the department's own *Bodies of Work* deck — Katie Hopkins
+columns, Peter DeVito's *Black Voices Matter*, *Two Distant Strangers*, Emma González speeches,
+Edvard Munch, *It's A Sin*, *Parasite*, Steve Cutts… — every link re-checked and dead ones replaced.
 
 ---
 
@@ -91,7 +92,7 @@ End-to-end Playwright suite (load, filter, search, suggester, add, persistence, 
 guard, XSS safety, keyboard a11y, responsive). Start the server, then:
 
 ```bash
-node tests/library.test.cjs   # 27 assertions
+node tests/library.test.cjs   # 28 assertions
 ```
 
 ## Files

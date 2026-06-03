@@ -1,37 +1,32 @@
 /* ============================================================
    Bodies of Work — shared shelf backend (Google Apps Script)
 
-   This turns a plain Google Sheet into a free shared database for
-   the whole English team. It does two things:
+   Turns a plain Google Sheet into a free shared database for the
+   whole English team:
      • GET  → returns every visible resource as JSON (the site reads this)
      • POST → validates a new resource and appends it as a row
 
-   SETUP (see SETUP-SHARING.md for screenshots-level detail):
-     1. Make a new Google Sheet (sheet.new).
+   SETUP (see SETUP-SHARING.md):
+     1. Make a new Google Sheet (sheet.new) on your ISH account.
      2. Extensions → Apps Script. Delete the sample, paste THIS file.
-     3. Deploy → New deployment → type "Web app":
-          - Execute as: Me
-          - Who has access: Anyone
-        Authorise when asked, then COPY the /exec URL.
+     3. Deploy → New deployment → Web app → Execute as: Me · Who has access: Anyone.
+        Authorise, then COPY the /exec URL.
      4. Paste that URL into config.js (the `endpoint` value) and redeploy the site.
 
-   The sheet's header row is created automatically on first use.
-   To remove a junk entry, set its `status` cell to "hidden" (or delete the row).
+   The header row is created automatically. Hide a junk entry by setting its
+   `status` cell to "hidden" (or delete the row).
    ============================================================ */
 
 var SHEET_NAME = "resources";
-var HEADERS = ["timestamp", "id", "title", "url", "source", "field", "textType",
-  "concepts", "quality", "themes", "note", "year", "addedByName", "status"];
-var FIELDS = ["culture-identity-community", "beliefs-values-education",
-  "politics-power-justice", "art-creativity-imagination", "science-technology-environment"];
+var HEADERS = ["timestamp", "id", "title", "url", "source", "themes", "field",
+  "textType", "quality", "tags", "note", "year", "addedByName", "status"];
+var THEMES = ["race", "war", "gender", "mental-health", "feminism", "lgbtqi",
+  "environment", "inequality", "social-mobility", "modernisation"];
 
 function sheet_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SHEET_NAME);
-  if (!sh) {
-    sh = ss.getSheets()[0];
-    sh.setName(SHEET_NAME);
-  }
+  if (!sh) { sh = ss.getSheets()[0]; sh.setName(SHEET_NAME); }
   if (sh.getLastRow() === 0) sh.appendRow(HEADERS);
   return sh;
 }
@@ -60,11 +55,11 @@ function doGet() {
       title: String(r[i.title] || ""),
       url: String(r[i.url] || ""),
       source: String(r[i.source] || ""),
+      themes: splitList_(r[i.themes]),
       field: String(r[i.field] || ""),
       textType: String(r[i.textType] || ""),
-      concepts: splitList_(r[i.concepts]),
       quality: String(r[i.quality] || "neutral"),
-      themes: splitList_(r[i.themes]),
+      tags: splitList_(r[i.tags]),
       note: String(r[i.note] || ""),
       year: r[i.year] === "" ? "" : r[i.year],
       addedByName: String(r[i.addedByName] || ""),
@@ -80,11 +75,13 @@ function doPost(e) {
     var body = JSON.parse((e && e.postData && e.postData.contents) || "{}");
     var title = String(body.title || "").trim();
     var url = String(body.url || "").trim();
-    var field = String(body.field || "").trim();
+    var themes = (Array.isArray(body.themes) ? body.themes : splitList_(body.themes))
+      .map(function (t) { return String(t).trim(); })
+      .filter(function (t) { return THEMES.indexOf(t) >= 0; });
 
     if (!/^https?:\/\//i.test(url)) return json_({ ok: false, error: "invalid url" });
     if (!title) return json_({ ok: false, error: "missing title" });
-    if (FIELDS.indexOf(field) < 0) return json_({ ok: false, error: "invalid field" });
+    if (!themes.length) return json_({ ok: false, error: "need at least one valid theme" });
 
     var sh = sheet_();
     var id = "r-" + Utilities.getUuid().slice(0, 8);
@@ -93,13 +90,13 @@ function doPost(e) {
       id,
       title.slice(0, 300),
       url,
-      String(body.source || "").slice(0, 120),
-      field,
+      String(body.source || "").slice(0, 160),
+      themes.join(", "),
+      String(body.field || ""),
       String(body.textType || ""),
-      (Array.isArray(body.concepts) ? body.concepts.join(", ") : splitList_(body.concepts).join(", ")),
       String(body.quality || "neutral"),
-      (Array.isArray(body.themes) ? body.themes.join(", ") : splitList_(body.themes).join(", ")),
-      String(body.note || "").slice(0, 600),
+      (Array.isArray(body.tags) ? body.tags.join(", ") : splitList_(body.tags).join(", ")).slice(0, 240),
+      String(body.note || "").slice(0, 700),
       String(body.year || ""),
       String(body.addedByName || "").slice(0, 80),
       ""

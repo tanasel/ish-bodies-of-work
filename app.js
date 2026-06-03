@@ -1,11 +1,27 @@
 /* ============================================================
    Bodies of Work — ISH English resource library
    Vanilla JS, no build step. Static-host friendly.
+   Organised by THEME (primary) with IB field of inquiry (secondary).
    ============================================================ */
 (function () {
   "use strict";
 
-  /* ---------- Controlled vocabulary (kept in sync with the add form) ---------- */
+  /* ---------- Controlled vocabulary ---------- */
+  // Primary: the English department's themes (how the deck is organised).
+  const THEMES = [
+    { slug: "race", label: "Race" },
+    { slug: "war", label: "War" },
+    { slug: "gender", label: "Gender" },
+    { slug: "mental-health", label: "Mental health" },
+    { slug: "feminism", label: "Feminism" },
+    { slug: "lgbtqi", label: "LGBTQI+" },
+    { slug: "environment", label: "Environment" },
+    { slug: "inequality", label: "Inequality" },
+    { slug: "social-mobility", label: "Social mobility" },
+    { slug: "modernisation", label: "Modernisation" },
+  ];
+
+  // Secondary: the 5 IB Lang & Lit fields of inquiry (curriculum alignment).
   const FIELDS = [
     { slug: "culture-identity-community", label: "Culture, identity & community", color: "var(--f-culture)" },
     { slug: "beliefs-values-education", label: "Beliefs, values & education", color: "var(--f-beliefs)" },
@@ -14,34 +30,54 @@
     { slug: "science-technology-environment", label: "Science, technology & the environment", color: "var(--f-science)" },
   ];
 
+  // Default theme → IB field (used to auto-fill field when adding by theme).
+  const THEME_FIELD = {
+    "race": "culture-identity-community",
+    "war": "politics-power-justice",
+    "gender": "politics-power-justice",
+    "mental-health": "beliefs-values-education",
+    "feminism": "politics-power-justice",
+    "lgbtqi": "culture-identity-community",
+    "environment": "science-technology-environment",
+    "inequality": "politics-power-justice",
+    "social-mobility": "politics-power-justice",
+    "modernisation": "science-technology-environment",
+  };
+
   const TEXT_TYPES = [
     ["advertisement", "Advertisement"], ["opinion-column", "Opinion column"],
     ["speech", "Speech"], ["blog", "Blog"], ["infographic", "Infographic"],
     ["cartoon", "Cartoon"], ["photograph", "Photograph"], ["film-tv", "Film / TV"],
     ["song", "Song"], ["website", "Website"], ["news-article", "News article"],
     ["social-media", "Social media"], ["poster", "Poster"], ["podcast", "Podcast"],
+    ["artwork", "Artwork"],
   ];
-
-  const CONCEPTS = ["identity", "culture", "creativity", "communication", "perspective", "transformation", "representation"];
 
   const QUALITIES = [["good", "Good example"], ["bad", "Bad example"], ["neutral", "Neutral"]];
 
-  /* Keyword → field hints for the no-AI suggester */
+  /* Keyword → theme hints for the no-AI suggester */
   const SUGGEST = {
-    "culture-identity-community": ["identity", "culture", "race", "racial", "gender", "community", "belonging", "immigrant", "migrant", "diaspora", "heritage", "lgbt", "queer", "feminis", "women", "ethnic", "nation", "language", "humansofnewyork"],
-    "beliefs-values-education": ["belief", "value", "religio", "faith", "education", "school", "moral", "ethic", "learning", "universit", "teach", "philosoph", "tradition", "spiritual"],
-    "politics-power-justice": ["politic", "power", "justice", "protest", " war", "rights", "government", "law", "freedom", "equality", "propaganda", "election", "activis", "police", "refugee", "colonial", "kaepernick"],
-    "art-creativity-imagination": ["art", "creativ", "imagination", "design", "music", "film", "movie", "poem", "paint", "photograph", "aesthetic", "fashion", "architecture", "story", "gallery", "museum"],
-    "science-technology-environment": ["science", "technolog", "environment", "climate", " ai ", "artificial intelligence", "digital", "nature", "planet", "pollution", "data", "internet", "health", "space", "energy", "carbon", "emission", "patagonia"],
+    "race": ["race", "racial", "racism", "ethnic", "immigrant", "migrant", "refugee", "colonial", "stereotype", "black voices", "discrimination", "diaspora", "assimilation"],
+    "war": ["war", "conflict", "soldier", "military", "veteran", " gun", "weapon", " army", "combat", "civilians", "march for our lives"],
+    "gender": ["gender", "sexism", "misogyn", "masculinit", "patriarchy", "women", "woman", "sexual", "suitsupply"],
+    "mental-health": ["mental health", "depression", "anxiety", "isolation", "loneliness", "suicide", "wellbeing", "samaritans", "black dog"],
+    "feminism": ["feminis", "suffrage", "empowerment", "women's rights", "de beers"],
+    "lgbtqi": ["lgbt", "queer", " gay", "lesbian", " trans", "coming out", "aids", "it's a sin", "benetton"],
+    "environment": ["environment", "climate", "pollution", "extinction", "carbon", "nature", "planet", "sustainab", "rebellion"],
+    "inequality": ["inequality", "poverty", " class", "wealth", " rich", " poor", "capital", "marx", "parasite", "versailles"],
+    "social-mobility": ["social mobility", "opportunity", "aspiration", "adversity", "nike"],
+    "modernisation": ["modern", "technolog", "consumeris", "digital", "tradition", "progress", "globalis", "steve cutts"],
   };
 
   const fieldBySlug = Object.fromEntries(FIELDS.map((f) => [f.slug, f]));
+  const themeBySlug = Object.fromEntries(THEMES.map((t) => [t.slug, t]));
   const typeLabel = Object.fromEntries(TEXT_TYPES);
-  const qualityLabel = Object.fromEntries(QUALITIES);
-  const fieldSlugs = FIELDS.map((f) => f.slug);
-  const fieldSlugSet = new Set(fieldSlugs);
+  const themeSlugSet = new Set(THEMES.map((t) => t.slug));
+  const fieldSlugSet = new Set(FIELDS.map((f) => f.slug));
   const textTypeSet = new Set(TEXT_TYPES.map(([v]) => v));
   const qualitySet = new Set(QUALITIES.map(([v]) => v));
+  const fieldColor = (slug) => (fieldBySlug[slug] ? fieldBySlug[slug].color : "var(--ink)");
+  const themeLabel = (slug) => (themeBySlug[slug] ? themeBySlug[slug].label : slug);
   const STORE_KEY = "bodiesOfWork.local.v1";
   const ENDPOINT = (window.BOW_CONFIG && typeof window.BOW_CONFIG.endpoint === "string" ? window.BOW_CONFIG.endpoint : "").trim();
 
@@ -49,7 +85,7 @@
   const state = {
     items: [],
     shared: [],
-    filters: { field: new Set(), textType: new Set(), quality: new Set(), concept: new Set() },
+    filters: { theme: new Set(), field: new Set(), textType: new Set(), quality: new Set() },
     search: "",
     sort: "recent",
   };
@@ -70,13 +106,7 @@
   const normalizedUrlKey = (url) => {
     const href = safeHref(url);
     if (!href) return "";
-    try {
-      const u = new URL(href);
-      u.hash = "";
-      return u.href;
-    } catch {
-      return "";
-    }
+    try { const u = new URL(href); u.hash = ""; return u.href; } catch { return ""; }
   };
   const hostOf = (url) => { const href = safeHref(url); try { return href ? new URL(href).hostname.replace(/^www\./, "") : ""; } catch { return ""; } };
 
@@ -87,25 +117,25 @@
 
   function normalizeResource(raw, addedBy) {
     if (!raw || typeof raw !== "object") return null;
-
     const url = toText(raw.url);
     const title = toText(raw.title) || "Untitled";
-    const field = toText(raw.field);
+    const themes = listFrom(raw.themes).filter((t) => themeSlugSet.has(t));
+    let field = toText(raw.field);
+    if (!fieldSlugSet.has(field)) field = THEME_FIELD[themes[0]] || "";
     const textType = toText(raw.textType);
     const quality = toText(raw.quality);
     const addedAt = Number(raw.addedAt);
-
     return {
       ...raw,
       id: toText(raw.id) || "r-" + Math.abs(hashStr(url + title)).toString(36),
       title,
       url,
       source: toText(raw.source) || hostLabel(url),
-      field: fieldSlugSet.has(field) ? field : "",
+      themes,
+      field,
       textType: textTypeSet.has(textType) ? textType : "",
-      concepts: listFrom(raw.concepts).filter((c) => CONCEPTS.includes(c)),
       quality: qualitySet.has(quality) ? quality : "neutral",
-      themes: listFrom(raw.themes).slice(0, 20),
+      tags: listFrom(raw.tags).slice(0, 20),
       note: toText(raw.note),
       year: toText(raw.year),
       addedBy,
@@ -129,7 +159,6 @@
     const shared = Array.isArray(state.shared) ? state.shared : [];
     const seen = new Set();
     const out = [];
-    // Local optimistic adds, then the shared shelf, then the built-in seed; dedupe by URL.
     const tagged = [].concat(
       local.map((r) => [r, "me"]),
       shared.map((r) => [r, "shared"]),
@@ -154,13 +183,9 @@
       if (!res.ok) throw new Error("HTTP " + res.status);
       const data = await res.json();
       return data && Array.isArray(data.resources) ? data.resources : [];
-    } catch (e) {
-      return null; // null = couldn't reach the shared shelf
-    }
+    } catch (e) { return null; }
   }
   async function postShared(rec) {
-    // text/plain keeps it a "simple" request (no CORS preflight); no-cors response is opaque,
-    // so success is confirmed by re-fetching the shelf afterwards.
     await fetch(ENDPOINT, {
       method: "POST",
       mode: "no-cors",
@@ -192,12 +217,18 @@
   /* ---------- Filtering ---------- */
   function matches(item) {
     const f = state.filters;
+    if (f.theme.size && !(item.themes || []).some((t) => f.theme.has(t))) return false;
     if (f.field.size && !f.field.has(item.field)) return false;
     if (f.textType.size && !f.textType.has(item.textType)) return false;
     if (f.quality.size && !f.quality.has(item.quality)) return false;
-    if (f.concept.size && !(item.concepts || []).some((c) => f.concept.has(c))) return false;
     if (state.search) {
-      const hay = [item.title, item.source, item.note, (item.themes || []).join(" "), typeLabel[item.textType] || "", (fieldBySlug[item.field] || {}).label || ""].join(" ").toLowerCase();
+      const hay = [
+        item.title, item.source, item.note,
+        (item.tags || []).join(" "),
+        (item.themes || []).map(themeLabel).join(" "),
+        typeLabel[item.textType] || "",
+        (fieldBySlug[item.field] || {}).label || "",
+      ].join(" ").toLowerCase();
       if (!hay.includes(state.search)) return false;
     }
     return true;
@@ -206,8 +237,8 @@
   function sortItems(arr) {
     const a = arr.slice();
     if (state.sort === "title") a.sort((x, y) => (x.title || "").localeCompare(y.title || ""));
-    else if (state.sort === "field") a.sort((x, y) => (x.field || "").localeCompare(y.field || "") || (x.title || "").localeCompare(y.title || ""));
-    else a.sort((x, y) => (y.addedAt || 0) - (x.addedAt || 0)); // recent: local adds (with addedAt) float up
+    else if (state.sort === "theme") a.sort((x, y) => ((x.themes || [])[0] || "").localeCompare((y.themes || [])[0] || "") || (x.title || "").localeCompare(y.title || ""));
+    else a.sort((x, y) => (y.addedAt || 0) - (x.addedAt || 0));
     return a;
   }
 
@@ -231,37 +262,36 @@
 
     updateFilterCounts();
     updateMastheadStats();
-    const clearBtn = $("#clearFilters");
-    clearBtn.hidden = !anyFilterActive();
+    $("#clearFilters").hidden = !anyFilterActive();
   }
 
   function updateMastheadStats() {
     const stat = $("#stat");
     const count = state.items.length;
-    const fieldCount = new Set(state.items.map((i) => i.field).filter(Boolean)).size;
-    const countSpan = el("span");
-    const fieldSpan = el("span");
-    countSpan.id = "countNum";
-    fieldSpan.id = "fieldNum";
-    countSpan.textContent = String(count);
-    fieldSpan.textContent = String(fieldCount);
+    const themeCount = new Set(state.items.flatMap((i) => i.themes || [])).size;
+    const countSpan = el("span"); countSpan.id = "countNum"; countSpan.textContent = String(count);
+    const themeSpan = el("span"); themeSpan.id = "fieldNum"; themeSpan.textContent = String(themeCount);
     stat.textContent = "";
     stat.append(
       countSpan,
       document.createTextNode(count === 1 ? " resource across " : " resources across "),
-      fieldSpan,
-      document.createTextNode(fieldCount === 1 ? " field" : " fields")
+      themeSpan,
+      document.createTextNode(themeCount === 1 ? " theme" : " themes")
     );
   }
 
   function card(item) {
-    const field = fieldBySlug[item.field];
     const li = el("li", "card");
-    if (field) li.style.setProperty("--field", field.color);
+    const col = fieldColor(item.field);
+    li.style.setProperty("--field", col);
 
-    // meta row
+    // meta: theme block(s) + good/bad + added-here
     const meta = el("div", "card__meta");
-    if (field) { const t = el("span", "tag-field"); t.textContent = field.label; meta.appendChild(t); }
+    (item.themes || []).slice(0, 3).forEach((t) => {
+      const tag = el("span", "tag-field");
+      tag.textContent = themeLabel(t);
+      meta.appendChild(tag);
+    });
     if (item.quality === "good" || item.quality === "bad") {
       const b = el("span", "badge " + (item.quality === "good" ? "badge--good" : "badge--bad"));
       b.textContent = item.quality === "good" ? "Good example" : "Bad example";
@@ -285,22 +315,24 @@
 
     if (item.note) { const n = el("p", "card__note"); n.textContent = "“" + item.note + "”"; li.appendChild(n); }
 
-    if (Array.isArray(item.themes) && item.themes.length) {
+    if (Array.isArray(item.tags) && item.tags.length) {
       const ul = el("ul", "card__themes");
-      item.themes.slice(0, 6).forEach((th) => { const t = el("li"); t.textContent = th; ul.appendChild(t); });
+      item.tags.slice(0, 6).forEach((th) => { const t = el("li"); t.textContent = th; ul.appendChild(t); });
       li.appendChild(ul);
     }
 
     const foot = el("div", "card__foot");
+    const fieldName = (fieldBySlug[item.field] || {}).label;
+    if (fieldName) { const fl = el("span", "card__field"); fl.textContent = fieldName; foot.appendChild(fl); }
     const href = safeHref(item.url);
     if (href) {
       const a = el("a", "card__open");
       a.href = href; a.target = "_blank"; a.rel = "noopener noreferrer";
       a.append(document.createTextNode("Open source"));
-      const svg = iconArrow(); a.appendChild(svg);
+      a.appendChild(iconArrow());
       foot.appendChild(a);
     } else {
-      const span = el("span", "card__ttype"); span.textContent = "No link"; foot.appendChild(span);
+      const span = el("span", "card__ttype"); span.textContent = "No public link"; foot.appendChild(span);
     }
     if (item.addedBy === "me") {
       const del = el("button", "card__del"); del.type = "button"; del.textContent = "Remove";
@@ -322,10 +354,10 @@
 
   /* ---------- Filter UI ---------- */
   function buildFilters() {
+    fillChips("theme", THEMES.map((t) => ({ value: t.slug, label: t.label, color: fieldColor(THEME_FIELD[t.slug]) })));
     fillChips("field", FIELDS.map((f) => ({ value: f.slug, label: f.label, color: f.color })));
     fillChips("textType", presentTextTypes().map(([v, l]) => ({ value: v, label: l })));
     fillChips("quality", [{ value: "good", label: "Good", color: "var(--good)" }, { value: "bad", label: "Bad", color: "var(--bad)" }, { value: "neutral", label: "Neutral" }]);
-    fillChips("concept", CONCEPTS.map((c) => ({ value: c, label: cap(c) })));
   }
 
   function presentTextTypes() {
@@ -362,7 +394,7 @@
     document.querySelectorAll(".chip").forEach((chip) => {
       const { group, value } = chip.dataset;
       const n = state.items.filter((it) => {
-        if (group === "concept") return (it.concepts || []).includes(value);
+        if (group === "theme") return (it.themes || []).includes(value);
         return it[group] === value;
       }).length;
       const c = chip.querySelector(".chip__count");
@@ -386,22 +418,23 @@
 
   /* ---------- Add modal ---------- */
   let modalReturnFocus = null;
+  const chosenThemes = new Set();
 
   function buildModalControls() {
-    // field chooser
-    const fc = $("#fieldChooser");
-    FIELDS.forEach((f) => {
+    // theme chooser (multi-select)
+    const tc = $("#themeChooser");
+    THEMES.forEach((t) => {
       const b = el("button", "chooser__opt");
-      b.type = "button"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", "false");
-      b.dataset.value = f.slug; b.style.setProperty("--dot", f.color);
-      const s = el("span"); s.textContent = f.label; b.appendChild(s);
-      b.addEventListener("click", () => selectField(f.slug, true));
-      fc.appendChild(b);
+      b.type = "button"; b.setAttribute("role", "checkbox"); b.setAttribute("aria-checked", "false");
+      b.dataset.value = t.slug; b.style.setProperty("--dot", fieldColor(THEME_FIELD[t.slug]));
+      const s = el("span"); s.textContent = t.label; b.appendChild(s);
+      b.addEventListener("click", () => toggleTheme(t.slug, true));
+      tc.appendChild(b);
     });
     // text type select
     const sel = $("#textTypeInput");
     TEXT_TYPES.forEach(([v, l]) => { const o = el("option"); o.value = v; o.textContent = l; sel.appendChild(o); });
-    // quality toggle
+    // quality toggle (radiogroup)
     const qt = $("#qualityToggle");
     QUALITIES.forEach(([v, l], i) => {
       const b = el("button", "toggle__opt");
@@ -411,10 +444,7 @@
       b.addEventListener("click", () => selectQuality(v));
       qt.appendChild(b);
     });
-    // roving tabindex + arrow-key navigation so each group behaves as a true radiogroup
-    initRoving(fc);
     initRoving(qt);
-    wireRadioKeys(fc);
     wireRadioKeys(qt);
   }
 
@@ -441,15 +471,11 @@
     });
   }
 
-  let chosenField = null;
-  function selectField(slug, manual) {
-    chosenField = slug;
-    document.querySelectorAll("#fieldChooser .chooser__opt").forEach((b) => {
-      const on = b.dataset.value === slug;
-      b.setAttribute("aria-checked", on ? "true" : "false");
-      b.tabIndex = on ? 0 : -1;
-    });
-    if (manual) { const note = $("#suggestNote"); note.hidden = true; }
+  function toggleTheme(slug, manual) {
+    if (chosenThemes.has(slug)) chosenThemes.delete(slug); else chosenThemes.add(slug);
+    const btn = $(`#themeChooser .chooser__opt[data-value="${slug}"]`);
+    if (btn) btn.setAttribute("aria-checked", chosenThemes.has(slug) ? "true" : "false");
+    if (manual) $("#suggestNote").hidden = true;
   }
   function selectQuality(v) {
     document.querySelectorAll("#qualityToggle .toggle__opt").forEach((b) => {
@@ -463,16 +489,17 @@
     return on ? on.dataset.value : "good";
   }
 
-  function suggestField() {
-    const text = ((($("#urlInput").value || "") + " " + ($("#titleInput").value || "") + " " + ($("#themesInput").value || "")).toLowerCase());
-    if (!text.trim()) return;
-    let best = null, bestScore = 0;
+  function suggestThemes() {
+    const text = (($("#urlInput").value || "") + " " + ($("#titleInput").value || "") + " " + ($("#themesInput").value || "")).toLowerCase();
+    if (!text.trim() || chosenThemes.size) return;
+    const hits = [];
     for (const slug of Object.keys(SUGGEST)) {
       const score = SUGGEST[slug].reduce((acc, kw) => acc + (text.includes(kw) ? 1 : 0), 0);
-      if (score > bestScore) { bestScore = score; best = slug; }
+      if (score > 0) hits.push([slug, score]);
     }
-    if (best && bestScore > 0) {
-      selectField(best, false);
+    hits.sort((a, b) => b[1] - a[1]);
+    if (hits.length) {
+      hits.slice(0, 2).forEach(([slug]) => toggleTheme(slug, false));
       const note = $("#suggestNote");
       note.textContent = "· suggested for you — tap to change";
       note.hidden = false;
@@ -483,8 +510,8 @@
     modalReturnFocus = document.activeElement;
     const dlg = $("#addModal");
     $("#addForm").reset();
-    chosenField = null;
-    document.querySelectorAll("#fieldChooser .chooser__opt").forEach((b, idx) => { b.setAttribute("aria-checked", "false"); b.tabIndex = idx === 0 ? 0 : -1; });
+    chosenThemes.clear();
+    document.querySelectorAll("#themeChooser .chooser__opt").forEach((b) => b.setAttribute("aria-checked", "false"));
     selectQuality("good");
     $("#suggestNote").hidden = true;
     $("#formError").hidden = true;
@@ -500,17 +527,18 @@
   function collectForm() {
     const url = $("#urlInput").value.trim();
     const title = $("#titleInput").value.trim();
-    const themes = $("#themesInput").value.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 10);
+    const tags = $("#themesInput").value.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 10);
     const note = $("#noteInput").value.trim();
+    const themes = [...chosenThemes];
     return {
       id: "r-" + Math.abs(hashStr(url + title)).toString(36) + "-" + (state.items.length + 1),
       title, url,
       source: hostLabel(url),
-      field: chosenField,
+      themes,
+      field: THEME_FIELD[themes[0]] || "",
       textType: $("#textTypeInput").value,
-      concepts: [],
       quality: currentQuality(),
-      themes, note,
+      tags, note,
       addedBy: "me",
       addedAt: nowSeconds(),
     };
@@ -519,7 +547,7 @@
   function validate(rec) {
     if (!safeHref(rec.url)) return "Please paste a valid web link (starting with http).";
     if (!rec.title) return "Give it a short title so people can find it.";
-    if (!rec.field) return "Tap which field of inquiry it belongs to.";
+    if (!rec.themes.length) return "Tap at least one theme it belongs to.";
     return null;
   }
 
@@ -538,7 +566,7 @@
     const key = normalizedUrlKey(rec.url);
     if (key && existingKeys().has(key)) { box.textContent = "That link is already on the shelf."; box.hidden = false; return; }
 
-    if (ENDPOINT) { await addToShared(rec, box); return; }
+    if (ENDPOINT) { await addToShared(rec); return; }
 
     if (!persistLocal(rec)) { box.textContent = "Couldn't save to this browser's storage."; box.hidden = false; return; }
     refreshAll();
@@ -550,7 +578,7 @@
     const saveBtn = $("#saveBtn");
     saveBtn.disabled = true;
     toast("Adding to the shared shelf…");
-    try { await postShared(rec); } catch (e) { /* opaque (no-cors); confirmed by refetch below */ }
+    try { await postShared(rec); } catch (e) { /* opaque (no-cors); confirmed by refetch */ }
     const shared = await fetchShared();
     if (shared) state.shared = shared;
     refreshAll();
@@ -560,7 +588,6 @@
       closeModal();
       toast("Added to the shared shelf");
     } else {
-      // couldn't confirm the write — keep it on this device so nothing is lost
       persistLocal(rec); refreshAll(); closeModal();
       toast("Saved on this device — couldn't reach the shared shelf");
     }
@@ -570,7 +597,7 @@
     if (!window.confirm("Remove this resource from your shelf?")) return;
     const local = loadLocal().filter((r) => r.id !== id);
     saveLocal(local);
-    buildItems(); buildFilters(); reapplyPressed(); render();
+    refreshAll();
     toast("Removed");
   }
 
@@ -583,7 +610,6 @@
       await navigator.clipboard.writeText(payload);
       toast("Submission copied — send it to the curator");
     } catch {
-      // fallback: surface text for manual copy
       const box = $("#formError"); box.hidden = false; box.textContent = "Copy failed — here it is to copy by hand: " + payload;
     }
   }
@@ -595,15 +621,13 @@
       chip.setAttribute("aria-pressed", set && set.has(chip.dataset.value) ? "true" : "false");
     });
   }
-  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
   function hostLabel(url) {
     const h = hostOf(url);
     if (!h) return "";
-    const map = { "youtube.com": "YouTube", "youtu.be": "YouTube", "vimeo.com": "Vimeo", "theguardian.com": "The Guardian", "nytimes.com": "The New York Times", "bbc.co.uk": "BBC", "bbc.com": "BBC" };
+    const map = { "youtube.com": "YouTube", "youtu.be": "YouTube", "vimeo.com": "Vimeo", "theguardian.com": "The Guardian", "nytimes.com": "The New York Times", "bbc.co.uk": "BBC", "bbc.com": "BBC", "en.wikipedia.org": "Wikipedia" };
     return map[h] || h;
   }
   function hashStr(s) { let h = 0; for (let i = 0; i < s.length; i++) { h = (h << 5) - h + s.charCodeAt(i); h |= 0; } return h; }
-  // Date.now avoided per environment constraints elsewhere; in-browser it's fine, but keep a guard.
   function nowSeconds() { try { return Math.floor(Date.now() / 1000); } catch { return state.items.length + 1; } }
 
   let toastTimer = null;
@@ -631,8 +655,8 @@
     $("#addForm").addEventListener("submit", onSubmit);
     $("#copySubmission").addEventListener("click", copySubmission);
     $("#addModal").addEventListener("cancel", (e) => { e.preventDefault(); closeModal(); });
-    $("#urlInput").addEventListener("blur", suggestField);
-    $("#titleInput").addEventListener("blur", suggestField);
+    $("#urlInput").addEventListener("blur", suggestThemes);
+    $("#titleInput").addEventListener("blur", suggestThemes);
 
     const toggle = $("#filtersToggle");
     toggle.addEventListener("click", () => {
