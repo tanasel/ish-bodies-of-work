@@ -758,19 +758,6 @@
     svg.appendChild(p); return svg;
   }
 
-  async function copySubmission() {
-    const rec = collectForm();
-    const err = validate(rec);
-    if (err) { const box = $("#formError"); box.textContent = err; box.hidden = false; return; }
-    const payload = JSON.stringify({ ...rec, addedBy: undefined, addedAt: undefined }, (k, v) => (v === undefined ? undefined : v), 2);
-    try {
-      await navigator.clipboard.writeText(payload);
-      toast("Submission copied — send it to the curator");
-    } catch {
-      const box = $("#formError"); box.hidden = false; box.textContent = "Copy failed — here it is to copy by hand: " + payload;
-    }
-  }
-
   /* ---------- Misc helpers ---------- */
   function reapplyPressed() {
     document.querySelectorAll(".chip").forEach((chip) => {
@@ -819,7 +806,6 @@
     $("#addBtn").addEventListener("click", openModal);
     $("#closeModal").addEventListener("click", closeModal);
     $("#addForm").addEventListener("submit", onSubmit);
-    $("#copySubmission").addEventListener("click", copySubmission);
     $("#addModal").addEventListener("cancel", (e) => { e.preventDefault(); closeModal(); });
     $("#urlInput").addEventListener("blur", suggestThemes);
     $("#titleInput").addEventListener("blur", suggestThemes);
